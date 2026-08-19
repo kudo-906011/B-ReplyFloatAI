@@ -216,6 +216,26 @@ export default function App() {
   });
 
   // Sync with native Android environment if running inside the Android APK
+  const isNativeAndroid = typeof window !== 'undefined' && !!(window as any).Android;
+
+  const handleRequestOverlayPermission = () => {
+    if (typeof window !== 'undefined' && (window as any).Android?.requestOverlayPermission) {
+      (window as any).Android.requestOverlayPermission();
+    }
+  };
+
+  const handleRequestAccessibilityPermission = () => {
+    if (typeof window !== 'undefined' && (window as any).Android?.requestAccessibilityPermission) {
+      (window as any).Android.requestAccessibilityPermission();
+    }
+  };
+
+  const handleRequestNotificationPermission = () => {
+    if (typeof window !== 'undefined' && (window as any).Android?.requestNotificationPermission) {
+      (window as any).Android.requestNotificationPermission();
+    }
+  };
+
   useEffect(() => {
     const updateAndroidState = () => {
       if (typeof window !== 'undefined' && (window as any).Android) {
@@ -226,11 +246,23 @@ export default function App() {
         const accessOk = typeof android.isAccessibilityPermissionGranted === 'function' 
           ? android.isAccessibilityPermissionGranted() 
           : true;
+        const notifOk = typeof android.isNotificationPermissionGranted === 'function'
+          ? android.isNotificationPermissionGranted()
+          : true;
+        const isRunning = typeof android.isFloatingServiceRunning === 'function'
+          ? android.isFloatingServiceRunning()
+          : false;
+
         setPermissions(prev => ({
           ...prev,
           overlay: overlayOk,
           accessibility: accessOk,
+          notifications: notifOk,
         }));
+
+        if (isRunning) {
+          setIsServiceActive(true);
+        }
       }
     };
 
@@ -693,7 +725,7 @@ export default function App() {
         {activeTab === 'home' && (
           <HomeScreen
             isServiceActive={isServiceActive}
-            setIsServiceActive={setIsServiceActive}
+            setIsServiceActive={handleToggleService}
             overlaySettings={overlaySettings}
             replySettings={replySettings}
             activeProvider={activeProvider}
@@ -701,6 +733,10 @@ export default function App() {
             supportedAppsCount={apps.filter(a => a.enabled).length}
             permissions={permissions}
             onNavigateTab={setActiveTab}
+            onRequestOverlayPermission={handleRequestOverlayPermission}
+            onRequestAccessibilityPermission={handleRequestAccessibilityPermission}
+            onRequestNotificationPermission={handleRequestNotificationPermission}
+            isNativeAndroid={isNativeAndroid}
             onTriggerTest={() => {
               setActiveTab('simulator');
               handleTriggerAnalysis();

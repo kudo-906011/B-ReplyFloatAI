@@ -1,5 +1,6 @@
 package com.replyfloat.ai
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -23,6 +24,8 @@ import android.webkit.*
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import com.replyfloat.ai.service.FloatingOverlayService
 import org.json.JSONArray
 import org.json.JSONObject
@@ -37,6 +40,13 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "ReplyFloatAI"
         private const val LOCAL_HOST = "app.local"
         private const val START_URL = "https://$LOCAL_HOST/index.html"
+    }
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        Log.i(TAG, "Notification permission result: $isGranted")
+        notifyWebOfPermissions()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -55,6 +65,13 @@ class MainActivity : ComponentActivity() {
         }
 
         prefs = getSharedPreferences("replyfloat_prefs", Context.MODE_PRIVATE)
+
+        // Request notification permission automatically on Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
 
         webView = WebView(this).apply {
             setBackgroundColor(Color.parseColor("#090D16"))
@@ -137,6 +154,7 @@ class MainActivity : ComponentActivity() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
                     Log.i(TAG, "Page loaded successfully: $url")
+                    notifyWebOfPermissions()
                 }
             }
 
@@ -185,10 +203,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun notifyWebOfPermissions() {
+        runOnUiThread {
+            webView.evaluateJavascript("if (window.onAndroidResume) { window.onAndroidResume(); }", null)
+        }
+    }
+
     override fun onResume() {
         super.onResume()
-        // Notify web UI of updated permission states
-        webView.evaluateJavascript("if (window.onAndroidResume) { window.onAndroidResume(); }", null)
+        notifyWebOfPermissions()
     }
 
     inner class AndroidBridge(private val context: Context) {
@@ -208,13 +231,23 @@ class MainActivity : ComponentActivity() {
         @JavascriptInterface
         fun requestOverlayPermission() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(context)) {
-                val intent = Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:${context.packageName}")
-                ).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                Toast.makeText(context, "Grant 'Display over other apps' to enable floating overlay", Toast.LENGTH_LONG).show()
+                try {
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:${context.packageName}")
+                    ).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(intent)
                 }
-                context.startActivity(intent)
+            } else {
+                Toast.makeText(context, "Overlay permission is already granted!", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -230,6 +263,11 @@ class MainActivity : ComponentActivity() {
 
         @JavascriptInterface
         fun requestAccessibilityPermission() {
+            Toast.makeText(
+                context,
+                "Enable 'ReplyFloat AI Context Detection' in Downloaded Services / Installed Apps",
+                Toast.LENGTH_LONG
+            ).show()
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
@@ -237,9 +275,38 @@ class MainActivity : ComponentActivity() {
         }
 
         @JavascriptInterface
+        fun isNotificationPermissionGranted(): Boolean {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            } else {
+                true
+            }
+        }
+
+        @JavascriptInterface
+        fun requestNotificationPermission() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    runOnUiThread {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                } else {
+                    Toast.makeText(context, "Notification permission is already granted!", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(context, "Notifications active", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        @JavascriptInterface
         fun startFloatingService(settingsJson: String) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(context)) {
+                Toast.makeText(context, "Please allow 'Display over other apps' first to show the floating bar", Toast.LENGTH_LONG).show()
+                requestOverlayPermission()
+                return
+            }
             FloatingOverlayService.startService(context)
-            showToast("ReplyFloat AI floating overlay started")
+            showToast("ReplyFloat AI floating overlay is now active over all apps!")
         }
 
         @JavascriptInterface
@@ -309,7 +376,6 @@ class MainActivity : ComponentActivity() {
                 val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
                 val jsonArray = JSONArray()
                 for (app in apps) {
-                    // Filter non-system apps or common messaging apps
                     val isSystem = (app.flags and ApplicationInfo.FLAG_SYSTEM) != 0
                     val label = pm.getApplicationLabel(app).toString()
                     val pkg = app.packageName
