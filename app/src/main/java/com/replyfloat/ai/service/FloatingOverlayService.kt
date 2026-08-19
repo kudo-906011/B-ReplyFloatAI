@@ -21,7 +21,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -41,7 +40,6 @@ class FloatingOverlayService : Service() {
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var isExpanded = false
-    private var isPassThrough = false
 
     companion object {
         const val ACTION_START = "ACTION_START_OVERLAY"
@@ -134,7 +132,7 @@ class FloatingOverlayService : Service() {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = dp(24).toFloat()
                 setColor(Color.parseColor("#090D16"))
-                setStroke(dp(1), Color.parseColor("#38BDF8"))
+                setStroke(dp(1), Color.parseColor("#EF4444"))
             }
             elevation = dp(8).toFloat()
 
@@ -145,38 +143,38 @@ class FloatingOverlayService : Service() {
                 }
                 background = GradientDrawable().apply {
                     shape = GradientDrawable.OVAL
-                    setColor(Color.parseColor("#38BDF8"))
+                    setColor(Color.parseColor("#EF4444"))
                 }
             }
             addView(dot)
 
-            val text = TextView(context).apply {
-                text = "ReplyFloat AI"
+            val titleLabel = TextView(context).apply {
+                this.text = "ReplyFloat AI"
                 setTextColor(Color.WHITE)
                 textSize = 13f
                 typeface = android.graphics.Typeface.DEFAULT_BOLD
             }
-            addView(text)
+            addView(titleLabel)
 
-            val badge = TextView(context).apply {
+            val badgeView = TextView(context).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 ).apply {
                     marginStart = dp(8)
                 }
-                text = "3"
-                setTextColor(Color.parseColor("#38BDF8"))
+                this.text = "3"
+                setTextColor(Color.parseColor("#FCA5A5"))
                 textSize = 11f
                 setPadding(dp(6), dp(2), dp(6), dp(2))
                 background = GradientDrawable().apply {
                     shape = GradientDrawable.RECTANGLE
                     cornerRadius = dp(10).toFloat()
-                    setColor(Color.parseColor("#0F172A"))
-                    setStroke(dp(1), Color.parseColor("#1E293B"))
+                    setColor(Color.parseColor("#7F1D1D"))
+                    setStroke(dp(1), Color.parseColor("#991B1B"))
                 }
             }
-            addView(badge)
+            addView(badgeView)
         }
 
         // Expanded Panel View (State 2)
@@ -189,7 +187,7 @@ class FloatingOverlayService : Service() {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = dp(16).toFloat()
                 setColor(Color.parseColor("#090D16"))
-                setStroke(dp(1), Color.parseColor("#1E293B"))
+                setStroke(dp(1), Color.parseColor("#991B1B"))
             }
             elevation = dp(12).toFloat()
 
@@ -206,7 +204,7 @@ class FloatingOverlayService : Service() {
 
                 val title = TextView(context).apply {
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    text = "ReplyFloat Suggestions"
+                    this.text = "ReplyFloat Suggestions"
                     setTextColor(Color.WHITE)
                     textSize = 14f
                     typeface = android.graphics.Typeface.DEFAULT_BOLD
@@ -214,7 +212,7 @@ class FloatingOverlayService : Service() {
                 addView(title)
 
                 val minimizeBtn = TextView(context).apply {
-                    text = "Collapse"
+                    this.text = "Collapse"
                     setTextColor(Color.parseColor("#94A3B8"))
                     textSize = 12f
                     setPadding(dp(8), dp(4), dp(8), dp(4))
@@ -241,14 +239,14 @@ class FloatingOverlayService : Service() {
                 val tones = listOf("Logical", "Humorous", "Direct", "Debate")
                 for ((index, toneName) in tones.withIndex()) {
                     val pill = TextView(context).apply {
-                        text = toneName
+                        this.text = toneName
                         textSize = 11f
                         setTextColor(if (index == 0) Color.WHITE else Color.parseColor("#94A3B8"))
                         setPadding(dp(8), dp(4), dp(8), dp(4))
                         background = GradientDrawable().apply {
                             shape = GradientDrawable.RECTANGLE
                             cornerRadius = dp(12).toFloat()
-                            setColor(if (index == 0) Color.parseColor("#0284C7") else Color.parseColor("#0F172A"))
+                            setColor(if (index == 0) Color.parseColor("#DC2626") else Color.parseColor("#161B22"))
                         }
                     }
                     val lp = LinearLayout.LayoutParams(
@@ -287,15 +285,15 @@ class FloatingOverlayService : Service() {
                     }
 
                     val rText = TextView(context).apply {
-                        text = replyText
+                        this.text = replyText
                         setTextColor(Color.parseColor("#E2E8F0"))
                         textSize = 13f
                     }
                     addView(rText)
 
                     val copyHint = TextView(context).apply {
-                        text = "Tap to Copy"
-                        setTextColor(Color.parseColor("#38BDF8"))
+                        this.text = "Tap to Copy"
+                        setTextColor(Color.parseColor("#EF4444"))
                         textSize = 11f
                         setPadding(0, dp(4), 0, 0)
                     }
