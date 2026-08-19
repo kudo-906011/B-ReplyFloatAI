@@ -16,6 +16,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.provider.Settings
+import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import android.webkit.*
@@ -25,11 +26,18 @@ import androidx.activity.OnBackPressedCallback
 import com.replyfloat.ai.service.FloatingOverlayService
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.InputStream
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
     private lateinit var prefs: SharedPreferences
+
+    companion object {
+        private const val TAG = "ReplyFloatAI"
+        private const val LOCAL_HOST = "app.local"
+        private const val START_URL = "https://$LOCAL_HOST/index.html"
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,7 +49,9 @@ class MainActivity : ComponentActivity() {
             addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
             statusBarColor = Color.parseColor("#090D16")
             navigationBarColor = Color.parseColor("#090D16")
-            decorView.systemUiVisibility = decorView.systemUiVisibility and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                decorView.systemUiVisibility = decorView.systemUiVisibility and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+            }
         }
 
         prefs = getSharedPreferences("replyfloat_prefs", Context.MODE_PRIVATE)
@@ -54,6 +64,8 @@ class MainActivity : ComponentActivity() {
                 databaseEnabled = true
                 allowFileAccess = true
                 allowContentAccess = true
+                allowFileAccessFromFileURLs = true
+                allowUniversalAccessFromFileURLs = true
                 cacheMode = WebSettings.LOAD_DEFAULT
                 useWideViewPort = true
                 loadWithOverviewMode = true
@@ -61,22 +73,76 @@ class MainActivity : ComponentActivity() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     safeBrowsingEnabled = false
                 }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                }
             }
 
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val url = request?.url?.toString() ?: return false
-                    if (url.startsWith("http://") || url.startsWith("https://")) {
+                    if (url.startsWith("http://") || (url.startsWith("https://") && !url.contains(LOCAL_HOST) && !url.contains("appassets.androidplatform.net"))) {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                         startActivity(intent)
                         return true
                     }
                     return false
                 }
+
+                override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                    val uri = request?.url ?: return null
+                    val uriStr = uri.toString()
+
+                    // Intercept https://app.local/* and file:///android_asset/web/*
+                    val assetSubPath: String? = when {
+                        uri.scheme.equals("https", ignoreCase = true) && uri.host.equals(LOCAL_HOST, ignoreCase = true) -> {
+                            val path = uri.path?.removePrefix("/") ?: ""
+                            if (path.isEmpty() || path == "index.html") "web/index.html" else "web/$path"
+                        }
+                        uriStr.startsWith("file:///android_asset/web/") -> {
+                            uriStr.removePrefix("file:///android_asset/")
+                        }
+                        else -> null
+                    }
+
+                    if (assetSubPath != null) {
+                        try {
+                            val cleanPath = assetSubPath.substringBefore("?").substringBefore("#")
+                            val inputStream: InputStream = assets.open(cleanPath)
+                            val mimeType = getMimeType(cleanPath)
+                            val response = WebResourceResponse(mimeType, "UTF-8", inputStream)
+                            val headers = HashMap<String, String>().apply {
+                                put("Access-Control-Allow-Origin", "*")
+                                put("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+                                put("Access-Control-Allow-Headers", "*")
+                                put("Cache-Control", "no-cache")
+                            }
+                            response.responseHeaders = headers
+                            return response
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to stream asset: $assetSubPath", e)
+                        }
+                    }
+
+                    return super.shouldInterceptRequest(view, request)
+                }
+
+                override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                    super.onReceivedError(view, request, error)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        Log.e(TAG, "WebView error: [${error?.errorCode}] ${error?.description} at ${request?.url}")
+                    }
+                }
+
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    Log.i(TAG, "Page loaded successfully: $url")
+                }
             }
 
             webChromeClient = object : WebChromeClient() {
                 override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                    Log.d(TAG, "JS [${consoleMessage?.messageLevel()}]: ${consoleMessage?.message()} -- line ${consoleMessage?.lineNumber()} of ${consoleMessage?.sourceId()}")
                     return super.onConsoleMessage(consoleMessage)
                 }
             }
@@ -98,8 +164,25 @@ class MainActivity : ComponentActivity() {
             }
         })
 
-        // Load offline embedded ReplyFloat AI bundle
-        webView.loadUrl("file:///android_asset/web/index.html")
+        // Load self-contained local web assets
+        webView.loadUrl(START_URL)
+    }
+
+    private fun getMimeType(path: String): String {
+        return when {
+            path.endsWith(".html", ignoreCase = true) -> "text/html"
+            path.endsWith(".js", ignoreCase = true) || path.endsWith(".mjs", ignoreCase = true) -> "application/javascript"
+            path.endsWith(".css", ignoreCase = true) -> "text/css"
+            path.endsWith(".json", ignoreCase = true) -> "application/json"
+            path.endsWith(".png", ignoreCase = true) -> "image/png"
+            path.endsWith(".jpg", ignoreCase = true) || path.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
+            path.endsWith(".svg", ignoreCase = true) -> "image/svg+xml"
+            path.endsWith(".ico", ignoreCase = true) -> "image/x-icon"
+            path.endsWith(".woff2", ignoreCase = true) -> "font/woff2"
+            path.endsWith(".woff", ignoreCase = true) -> "font/woff"
+            path.endsWith(".ttf", ignoreCase = true) -> "font/ttf"
+            else -> "application/octet-stream"
+        }
     }
 
     override fun onResume() {
