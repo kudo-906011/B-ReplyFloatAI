@@ -87,6 +87,8 @@ class FloatingOverlayService : Service() {
     private var loadingProgressBar: ProgressBar? = null
     private var loadingStatusText: TextView? = null
     private var stylesHorizontalContainer: LinearLayout? = null
+    private var closePillBtnView: TextView? = null
+    private var expandPillBtnView: TextView? = null
 
     private val styleOptions = listOf(
         "Logical", "Short", "Casual", "Formal", "Funny", "Debate", "Respectful", "Counterargument", "Detailed"
@@ -339,18 +341,35 @@ class FloatingOverlayService : Service() {
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 ).apply {
-                    marginStart = dp(8)
+                    marginStart = dp(6)
                 }
                 this.text = " ⤢ "
                 setTextColor(Color.parseColor("#E2E8F0"))
-                textSize = 13f
+                textSize = 12f
                 typeface = Typeface.DEFAULT_BOLD
                 setPadding(dp(4), dp(2), dp(4), dp(2))
-                setOnClickListener {
-                    expandPanel()
-                }
+                background = createCardBackground("#1E293B", "#334155", dp(6), 1)
             }
+            expandPillBtnView = expandBtn
             addView(expandBtn)
+
+            // Action: Close / Dismiss Icon Button on Pill
+            val closeBtn = TextView(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    marginStart = dp(5)
+                }
+                this.text = " ✕ "
+                setTextColor(Color.parseColor("#EF4444"))
+                textSize = 12f
+                typeface = Typeface.DEFAULT_BOLD
+                setPadding(dp(4), dp(2), dp(4), dp(2))
+                background = createCardBackground("#2A1215", "#EF4444", dp(6), 1)
+            }
+            closePillBtnView = closeBtn
+            addView(closeBtn)
         }
     }
 
@@ -445,9 +464,10 @@ class FloatingOverlayService : Service() {
                     setTextColor(Color.parseColor("#EF4444"))
                     textSize = 14f
                     typeface = Typeface.DEFAULT_BOLD
-                    setPadding(dp(4), dp(2), dp(4), dp(2))
+                    setPadding(dp(6), dp(3), dp(6), dp(3))
+                    background = createCardBackground("#2A1215", "#EF4444", dp(6), 1)
                     setOnClickListener {
-                        removeOverlay()
+                        closeAndDismissService()
                     }
                 }
                 addView(closeBtn)
@@ -917,7 +937,16 @@ class FloatingOverlayService : Service() {
                 }
                 MotionEvent.ACTION_UP -> {
                     val clickDuration = System.currentTimeMillis() - startClickTime
-                    if (!isDragging && clickDuration < 300) {
+                    if (!isDragging && clickDuration < 350) {
+                        // Check if tap fell on the close button
+                        val closeRect = android.graphics.Rect()
+                        closePillBtnView?.getGlobalVisibleRect(closeRect)
+                        if (closeRect.contains(event.rawX.toInt(), event.rawY.toInt())) {
+                            closeAndDismissService()
+                            return@setOnTouchListener true
+                        }
+                        
+                        // Otherwise expand the full reply panel
                         expandPanel()
                     }
                     true
@@ -925,6 +954,19 @@ class FloatingOverlayService : Service() {
                 else -> false
             }
         }
+    }
+
+    private fun closeAndDismissService() {
+        vibrate(35)
+        removeOverlay()
+        isRunning = false
+        try {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        stopSelf()
+        Toast.makeText(this, "ReplyFloat AI dismissed", Toast.LENGTH_SHORT).show()
     }
 
     private fun createCardBackground(bgColorHex: String, strokeColorHex: String, cornerRadiusPx: Int, strokeWidthDp: Int): GradientDrawable {

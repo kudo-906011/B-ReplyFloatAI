@@ -35,6 +35,8 @@ class ReplyFloatAccessibilityService : AccessibilityService() {
         val packageName = event.packageName?.toString() ?: return
         
         serviceScope.launch {
+            if (!FloatingOverlayService.isRunning) return@launch
+
             val repository = AppPreferencesRepository.getInstance(applicationContext)
             val isMasterEnabled = repository.isMasterEnabled.first()
             if (!isMasterEnabled) return@launch
