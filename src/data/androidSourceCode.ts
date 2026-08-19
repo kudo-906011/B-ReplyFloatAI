@@ -31,6 +31,18 @@ include(":app")
 `,
   },
   {
+    path: 'gradle.properties',
+    language: 'properties',
+    description: 'Project-wide Gradle and AndroidX settings',
+    content: `org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+org.gradle.parallel=true
+android.useAndroidX=true
+android.enableJetifier=true
+kotlin.code.style=official
+org.gradle.configuration-cache=false
+`,
+  },
+  {
     path: 'build.gradle.kts',
     language: 'groovy',
     description: 'Top-level build script',

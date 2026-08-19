@@ -605,6 +605,12 @@ dependencyResolutionManagement {
 
 rootProject.name = "ReplyFloatAI"
 include(":app")
+`},{path:"gradle.properties",language:"properties",description:"Project-wide Gradle and AndroidX settings",content:`org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+org.gradle.parallel=true
+android.useAndroidX=true
+android.enableJetifier=true
+kotlin.code.style=official
+org.gradle.configuration-cache=false
 `},{path:"build.gradle.kts",language:"groovy",description:"Top-level build script",content:`// Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
     alias(libs.plugins.android.application) apply false
