@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">ReplyFloatAI</string>
+    <string name="accessibility_service_label">ReplyFloatAI Context Detection</string>
+    <string name="accessibility_service_description">Reads visible text from your allowed messaging, social, and forum applications to generate instant contextual replies. Never records or sends data outside your chosen AI provider.</string>
+    <string name="tile_label">ReplyFloatAI</string>
+    <string name="notification_channel_name">ReplyFloatAI Assistant Service</string>
+    <string name="notification_channel_desc">Active floating assistant status and controls</string>
+</resources>

@@ -1,0 +1,76 @@
+name: Build ReplyFloatAI APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+      - ai
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Node Dependencies
+        run: npm ci || npm install
+
+      - name: Build Web Application Bundle
+        run: |
+          npm run build
+          rm -rf app/src/main/assets/web
+          mkdir -p app/src/main/assets/web
+          cp -r dist/* app/src/main/assets/web/
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Make Gradlew Executable
+        run: |
+          if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
+          fi
+
+      - name: Build Debug APK
+        run: |
+          if [ -f "./gradlew" ]; then
+            ./gradlew :app:assembleDebug --stacktrace --no-daemon
+          else
+            gradle :app:assembleDebug --stacktrace --no-daemon
+          fi
+
+      - name: Verify Debug APK
+        run: |
+          if [ ! -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
+            echo "ERROR: Debug APK was not generated at expected location."
+            find app/build/outputs -type f || true
+            exit 1
+          fi
+          cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/ReplyFloatAI.apk
+          echo "Debug APK built successfully as ReplyFloatAI.apk:"
+          ls -lh app/build/outputs/apk/debug/ReplyFloatAI.apk
+
+      - name: Upload Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReplyFloatAI
+          path: app/build/outputs/apk/debug/ReplyFloatAI.apk
+          if-no-files-found: error

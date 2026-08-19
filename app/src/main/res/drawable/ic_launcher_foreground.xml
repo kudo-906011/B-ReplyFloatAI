@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Floating Chat Bubble Silhouette -->
+    <path
+        android:fillColor="#991B1B"
+        android:pathData="M34,30 C30,30 26,34 26,38 L26,62 C26,66 30,70 34,70 L42,70 L48,78 L48,70 L74,70 C78,70 82,66 82,62 L82,38 C82,34 78,30 74,30 Z" />
+
+    <!-- Dark Red Inner Core -->
+    <path
+        android:fillColor="#7F1D1D"
+        android:pathData="M37,34 C34,34 31,37 31,40 L31,59 C31,62 34,65 37,65 L46,65 L46,71 L51,65 L71,65 C74,65 77,62 77,59 L77,40 C77,37 74,34 71,34 Z" />
+
+    <!-- AI Sparkle / Neural Wing Center -->
+    <path
+        android:fillColor="#EF4444"
+        android:pathData="M54,41 L56.5,48.5 L64,51 L56.5,53.5 L54,61 L51.5,53.5 L44,51 L51.5,48.5 Z" />
+
+    <!-- Orbiting Energy Dots -->
+    <path
+        android:fillColor="#FCA5A5"
+        android:pathData="M40,46 A2.5,2.5 0 1,1 40,46.01 Z" />
+    <path
+        android:fillColor="#FCA5A5"
+        android:pathData="M68,46 A2.5,2.5 0 1,1 68,46.01 Z" />
+</vector>
