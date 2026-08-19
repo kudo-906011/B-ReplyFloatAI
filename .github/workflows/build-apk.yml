@@ -8,6 +8,9 @@ on:
       - master
       - ai
 
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,14 +19,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 22
 
       - name: Install Node Dependencies
-        run: npm ci || npm install
+        run: npm install --no-audit
 
       - name: Build Web Application Bundle
         run: |
